@@ -37,6 +37,8 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+builder.Services.AddAuthorization(); // Adds authorization services to the application, enabling role-based access control and policy enforcement.
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 // Register Swagger generator and customize its behavior.
@@ -53,28 +55,22 @@ builder.Services.AddSwaggerGen(options =>
         // The name of the HTTP header where the token will be sent.
         Name = "Authorization",
 
-
         // Indicates this is an HTTP authentication scheme.
         Type = SecuritySchemeType.Http,
-
 
         // Specifies the authentication scheme name.
         // Must be exactly "Bearer" for JWT Bearer tokens.
         Scheme = "Bearer",
 
-
         // Optional metadata to describe the token format.
         BearerFormat = "JWT",
-
 
         // Specifies that the token is sent in the request header.
         In = ParameterLocation.Header,
 
-
         // Text shown in Swagger UI to guide the user.
         Description = "Enter: Bearer {your JWT token}"
     });
-
 
     // ===============================
     // 2) Require the Bearer scheme for secured endpoints
@@ -102,6 +98,8 @@ app.UseHttpsRedirection();
 app.UseCors("StudentApiCorsPolicy"); // Applies the defined CORS policy to the application.
 
 app.UseAuthentication(); // Enables authentication middleware to validate JWT tokens in incoming requests.
+
+app.UseAuthorization(); // Enables authorization middleware to enforce access control based on user roles and claims.
 
 app.MapControllers();
 
