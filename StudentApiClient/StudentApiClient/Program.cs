@@ -1,249 +1,152 @@
-﻿using System.Net.Http.Json;
+﻿using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Net.Security;
 
 namespace StudentApiClient
 {
-    public class Program
+    class Program
     {
-        static readonly HttpClient httpClient = new HttpClient();
+        // ==========================
+        // Configuration
+        // ==========================
+
+        // Base URL of the secured Student API
+        private const string BaseUrl = "https://localhost:7036/";
+
+        // Test credentials that already exist in the API
+        private const string Email = "ali.ahmed@student.com";
+        private const string Password = "password2";
 
         static async Task Main(string[] args)
         {
-            httpClient.BaseAddress = new Uri("http://localhost:5003/api/Students/"); // Set this to the correct URI of your API
+            Console.WriteLine("=== Student API Console Client (JWT) ===");
+            Console.WriteLine();
 
-            // this will show all students 
-            await GetAll();
+            // Create an HttpClient configured for local HTTPS development
+            using var http = CreateHttpClientForLocalDev(BaseUrl);
 
-            // this will show passed students only
-            await GetPassed();
+            // Step 1: Login and retrieve JWT
+            var token = await LoginAndGetTokenAsync(http, Email, Password);
 
-            // this will show the calculated average for students grades
-            await GetAverageGrade();
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                Console.WriteLine("Login failed.");
+                return;
+            }
 
-            // this will show the info for student 1
-            await GetById(1); // Example: Get student with ID 1
+            Console.WriteLine("Login succeeded.");
+            Console.WriteLine($"Token (first 30 chars): {token[..30]}...");
+            Console.WriteLine();
 
-            // this will show the info for student 20 and show not found because 20 is not there
-            await GetById(20); // Example: Get student with ID 20
+            // Step 2: Call secured endpoint WITHOUT token
+            Console.WriteLine("Calling GET /api/Students/All WITHOUT token...");
+            await CallGetAllStudentsAsync(http, null);
+            Console.WriteLine();
 
-            // this will add new student
-            var newStudent = new Student { Name = "Mazen Abdullah", Age = 20, Grade = 85 };
-            await Create(newStudent); // Example: Add a new student
-
-            // this will show all students after adding new one
-            await GetAll();
-
-            // this will delete student 1
-            await Delete(1); // Example: Delete student with ID 1
-
-            // this will show all students after deleting student 1
-            await GetAll();
-
-            // this will Update student 2
-            await Update(2, new Student { Name = "Salma", Age = 22, Grade = 90 }); // Example: Update student with ID 2
-
-            // this will show all students after Updating student 2
-            await GetAll();
+            // Step 3: Call secured endpoint WITH token
+            Console.WriteLine("Calling GET /api/Students/All WITH token...");
+            await CallGetAllStudentsAsync(http, token);
+            Console.WriteLine();
         }
 
-        static async Task GetAll()
+        // ==========================
+        // Helper Methods
+        // ==========================
+        static HttpClient CreateHttpClientForLocalDev(string baseUrl)
         {
-            try
+            var handler = new HttpClientHandler
             {
-                Console.WriteLine("\n_____________________________");
-                Console.WriteLine("\nFetching all students...\n");
+                ServerCertificateCustomValidationCallback =
+                    (message, certificate, chain, sslErrors) =>
+                        sslErrors == SslPolicyErrors.None ||
+                        sslErrors == SslPolicyErrors.RemoteCertificateChainErrors
+            };
 
-                var response = await httpClient.GetAsync("GetAll");
-                if (response.IsSuccessStatusCode)
-                {
-                    var students = await response.Content.ReadFromJsonAsync<List<Student>>();
-                    if (students != null && students.Count > 0)
-                    {
-                        foreach (var student in students)
-                        {
-                            Console.WriteLine($"ID: {student.Id}, Name: {student.Name}, Age: {student.Age}, Grade: {student.Grade}");
-                        }
-                    }
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    Console.WriteLine("No students found.");
-                }
-            }
-            catch (Exception ex)
+            return new HttpClient(handler)
             {
-                Console.WriteLine($"An error occurred: {ex.Message}");
-            }
+                BaseAddress = new Uri(baseUrl)
+            };
         }
 
-        static async Task GetPassed()
+        static async Task<string> LoginAndGetTokenAsync(HttpClient http, string email, string password)
         {
-            try
+            var request = new LoginRequest
             {
-                Console.WriteLine("\n_____________________________");
-                Console.WriteLine("\nFetching passed students...\n");
+                Email = email,
+                Password = password
+            };
 
-                var response = await httpClient.GetAsync("GetPassed");
-                if (response.IsSuccessStatusCode)
-                {
-                    var passedStudents = await response.Content.ReadFromJsonAsync<List<Student>>();
-                    if (passedStudents != null && passedStudents.Count > 0)
-                    {
-                        foreach (var student in passedStudents)
-                        {
-                            Console.WriteLine($"ID: {student.Id}, Name: {student.Name}, Age: {student.Age}, Grade: {student.Grade}");
-                        }
-                    }
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    Console.WriteLine("No students passed.");
-                }
-            }
-            catch (Exception ex)
+            var response = await http.PostAsJsonAsync("/api/Auth/login", request);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
-                Console.WriteLine($"An error occurred: {ex.Message}");
+                Console.WriteLine("Invalid credentials.");
+                return "";
             }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"Login failed: {response.StatusCode}");
+                return "";
+            }
+
+            var tokenResponse = await response.Content.ReadFromJsonAsync<TokenResponse>();
+            return tokenResponse?.Token ?? "";
         }
 
-        static async Task GetAverageGrade()
+        static async Task CallGetAllStudentsAsync(HttpClient http, string token)
         {
-            try
-            {
-                Console.WriteLine("\n_____________________________");
-                Console.WriteLine("\nFetching average grade...\n");
+            using var request = new HttpRequestMessage(HttpMethod.Get, "api/Students/GetAll");
 
-                var response = await httpClient.GetAsync("GetAverageGrade");
-                if (response.IsSuccessStatusCode)
-                {
-                    var averageGrade = await response.Content.ReadFromJsonAsync<double>();
-                    Console.WriteLine($"Average Grade: {averageGrade}");
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    Console.WriteLine("No students found.");
-                }
-            }
-            catch (Exception ex)
+            if (!string.IsNullOrWhiteSpace(token))
             {
-                Console.WriteLine($"An error occurred: {ex.Message}");
+                request.Headers.Authorization =
+                    new AuthenticationHeaderValue("Bearer", token);
             }
-        }
 
-        static async Task GetById(int id)
-        {
-            try
-            {
-                Console.WriteLine("\n_____________________________");
-                Console.WriteLine($"\nFetching student with ID {id}...\n");
+            var response = await http.SendAsync(request);
 
-                var response = await httpClient.GetAsync($"GetById/{id}");
-                if (response.IsSuccessStatusCode)
-                {
-                    var student = await response.Content.ReadFromJsonAsync<Student>();
-                    if (student != null)
-                    {
-                        Console.WriteLine($"ID: {student.Id}, Name: {student.Name}, Age: {student.Age}, Grade: {student.Grade}");
-                    }
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
-                {
-                    Console.WriteLine($"Bad Request: Invalid student ID.");
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    Console.WriteLine($"Not Found: Student with ID {id} not found.");
-                }
-            }
-            catch (Exception ex)
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
-                Console.WriteLine($"An error occurred: {ex.Message}");
+                Console.WriteLine("401 Unauthorized");
+                return;
             }
-        }
 
-        static async Task Create(Student student)
-        {
-            try
+            if (!response.IsSuccessStatusCode)
             {
-                Console.WriteLine("\n_____________________________");
-                Console.WriteLine("\nAdding a new student...\n");
-
-                var response = await httpClient.PostAsJsonAsync("Create", student);
-                if (response.IsSuccessStatusCode)
-                {
-                    var addedStudent = await response.Content.ReadFromJsonAsync<Student>();
-                    Console.WriteLine($"Added Student - ID: {addedStudent!.Id}, Name: {addedStudent.Name}, Age: {addedStudent.Age}, Grade: {addedStudent.Grade}");
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
-                {
-                    Console.WriteLine("Bad Request: Invalid student data.");
-                }
+                Console.WriteLine($"Request failed: {response.StatusCode}");
+                return;
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"An error occurred: {ex.Message}");
-            }
-        }
 
-        static async Task Update(int id, Student updatedStudent)
-        {
-            try
-            {
-                Console.WriteLine("\n_____________________________");
-                Console.WriteLine($"\nUpdating student with ID {id}...\n");
+            var students = await response.Content.ReadFromJsonAsync<List<StudentDto>>();
 
-                var response = await httpClient.PutAsJsonAsync($"Update/{id}", updatedStudent);
-                if (response.IsSuccessStatusCode)
-                {
-                    var student = await response.Content.ReadFromJsonAsync<Student>();
-                    Console.WriteLine($"Updated Student: ID: {student!.Id}, Name: {student.Name}, Age: {student.Age}, Grade: {student.Grade}");
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
-                {
-                    Console.WriteLine("Failed to update student: Invalid student data.");
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    Console.WriteLine($"Student with ID {id} not found.");
-                }
-            }
-            catch (Exception ex)
+            Console.WriteLine($"{students.Count} students returned:");
+            foreach (var s in students)
             {
-                Console.WriteLine($"An error occurred: {ex.Message}");
-            }
-        }
-
-        static async Task Delete(int id)
-        {
-            try
-            {
-                Console.WriteLine("\n_____________________________");
-                Console.WriteLine($"\nDeleting student with ID {id}...\n");
-
-                var response = await httpClient.DeleteAsync($"Delete/{id}");
-                if (response.IsSuccessStatusCode)
-                {
-                    Console.WriteLine($"Student with ID {id} has been deleted.");
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
-                {
-                    Console.WriteLine($"Bad Request: Invalid student ID.");
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    Console.WriteLine($"Not Found: Student with ID {id} not found.");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"An error occurred: {ex.Message}");
+                Console.WriteLine($"- {s.Name} (Age: {s.Age}, Grade: {s.Grade})");
             }
         }
     }
 
-    public class Student
+    // ==========================
+    // DTOs
+    // ==========================
+    class LoginRequest
+    {
+        public string Email { get; set; }
+        public string Password { get; set; }
+    }
+
+    class TokenResponse
+    {
+        public string Token { get; set; }
+    }
+
+    class StudentDto
     {
         public int Id { get; set; }
-        public string Name { get; set; } = default!;
+        public string Name { get; set; }
         public int Age { get; set; }
         public int Grade { get; set; }
     }
