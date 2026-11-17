@@ -13,6 +13,7 @@ namespace StudentApiServer.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
+        [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {
             // Step 1: Find the student by email from the in-memory data store.
@@ -58,7 +59,7 @@ namespace StudentApiServer.Controllers
             // The token includes issuer, audience, claims, expiration, and signature.
             var token = new JwtSecurityToken(
                 issuer: "StudentApi",
-                audience: "StudentApiUser",
+                audience: "StudentApiUsers",
                 claims: claims,
                 expires: DateTime.Now.AddMinutes(30),
                 signingCredentials: creds

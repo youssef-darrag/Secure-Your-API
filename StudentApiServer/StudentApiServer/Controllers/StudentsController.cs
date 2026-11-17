@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using StudentApiServer.DataSimulation;
 using StudentApiServer.Models;
 
 namespace StudentApiServer.Controllers
 {
+    [Authorize] // Requires authentication for all endpoints in this controller, ensuring that only authorized users can access the student data.
     [Route("api/[controller]")] // Sets the route for this controller to "api/Students", based on the controller name.
     [ApiController] // Marks the class as a Web API controller with enhanced features.
     public class StudentsController : ControllerBase
