@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using StudentApiServer.DataSimulation;
 using StudentApiServer.Models;
+using System.Security.Claims;
 
 namespace StudentApiServer.Controllers
 {
@@ -67,6 +68,15 @@ namespace StudentApiServer.Controllers
 
             if (student == null)
                 return NotFound($"Student with ID {id} not found."); // Returns a 404 Not Found response if the student is not found.
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // Retrieves the user ID from the JWT claims.
+
+            var userRole = User.FindFirstValue(ClaimTypes.Role); // Retrieves the user role from the JWT claims.
+
+            var authenticatedStudentId = int.Parse(userId!); // Parses the user ID to an integer for comparison.
+
+            if (userRole != "Admin" && authenticatedStudentId != id)
+                return Forbid("You are not authorized to access this student's data."); // Returns a 403 Forbidden response if the user is neither an admin nor the owner of the student data.
 
             return Ok(student); // Returns a 200 OK response with the student data.
         }
