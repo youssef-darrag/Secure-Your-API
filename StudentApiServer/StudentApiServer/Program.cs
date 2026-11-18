@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using StudentApiServer.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,7 +39,13 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization(); // Adds authorization services to the application, enabling role-based access control and policy enforcement.
+builder.Services.AddSingleton<IAuthorizationHandler, StudentOwnerOrAdminHandler>(); // Registers the custom authorization handler for the StudentOwnerOrAdminRequirement.
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("StudentOwnerOrAdmin", policy =>
+        policy.Requirements.Add(new StudentOwnerOrAdminRequirement())); // Adds the custom authorization requirement to the policy.
+});
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();

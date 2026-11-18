@@ -59,7 +59,7 @@ namespace StudentApiServer.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)] // Indicates that this endpoint can return a 200 OK response.
         [ProducesResponseType(StatusCodes.Status400BadRequest)] // Indicates that this endpoint can return a 400 Bad Request response.
         [ProducesResponseType(StatusCodes.Status404NotFound)] // Indicates that this endpoint can return a 404 Not Found response.
-        public ActionResult<Student> GetById(int id)
+        public async Task<ActionResult<Student>> GetById(int id, [FromServices] IAuthorizationService authorizationService)
         {
             if (id < 1)
                 return BadRequest("Invalid student ID."); // Returns a 400 Bad Request response if the provided ID is invalid.
@@ -69,14 +69,10 @@ namespace StudentApiServer.Controllers
             if (student == null)
                 return NotFound($"Student with ID {id} not found."); // Returns a 404 Not Found response if the student is not found.
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // Retrieves the user ID from the JWT claims.
+            var authResult = await authorizationService.AuthorizeAsync(User, id, "StudentOwnerOrAdmin"); // Checks if the user is authorized to access this student's data based on the custom requirement.
 
-            var userRole = User.FindFirstValue(ClaimTypes.Role); // Retrieves the user role from the JWT claims.
-
-            var authenticatedStudentId = int.Parse(userId!); // Parses the user ID to an integer for comparison.
-
-            if (userRole != "Admin" && authenticatedStudentId != id)
-                return Forbid("You are not authorized to access this student's data."); // Returns a 403 Forbidden response if the user is neither an admin nor the owner of the student data.
+            if (!authResult.Succeeded)
+                return Forbid("You are not authorized to access this student's data."); // Returns a 403 Forbidden response if the user is not authorized.
 
             return Ok(student); // Returns a 200 OK response with the student data.
         }
