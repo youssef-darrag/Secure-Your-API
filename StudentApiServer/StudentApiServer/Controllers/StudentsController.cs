@@ -11,6 +11,7 @@ namespace StudentApiServer.Controllers
     public class StudentsController : ControllerBase
     {
         [HttpGet("GetAll")] // Defines an HTTP GET endpoint at "api/Students/GetAll".
+        [Authorize(Roles = "Admin")] // Restricts access to this endpoint to users with the "Admin" role, ensuring that only administrators can retrieve all student data.
         [ProducesResponseType(StatusCodes.Status200OK)] // Indicates that this endpoint can return a 200 OK response.
         [ProducesResponseType(StatusCodes.Status404NotFound)] // Indicates that this endpoint can return a 404 Not Found response.
         public ActionResult<IEnumerable<Student>> GetAll()
@@ -24,6 +25,7 @@ namespace StudentApiServer.Controllers
         }
 
         [HttpGet("GetPassed")] // Defines an HTTP GET endpoint at "api/Students/GetPassed".
+        [AllowAnonymous] // Allows anonymous access to this endpoint, meaning it can be accessed without authentication.
         [ProducesResponseType(StatusCodes.Status200OK)] // Indicates that this endpoint can return a 200 OK response.
         [ProducesResponseType(StatusCodes.Status404NotFound)] // Indicates that this endpoint can return a 404 Not Found response.
         public ActionResult<IEnumerable<Student>> GetPassed()
@@ -38,6 +40,7 @@ namespace StudentApiServer.Controllers
         }
 
         [HttpGet("GetAverageGrade")] // Defines an HTTP GET endpoint at "api/Students/GetAverageGrade".
+        [AllowAnonymous] // Allows anonymous access to this endpoint, meaning it can be accessed without authentication.
         [ProducesResponseType(StatusCodes.Status200OK)] // Indicates that this endpoint can return a 200 OK response.
         [ProducesResponseType(StatusCodes.Status404NotFound)] // Indicates that this endpoint can return a 404 Not Found response.
         public ActionResult<double> GetAverageGrade()
@@ -69,6 +72,7 @@ namespace StudentApiServer.Controllers
         }
 
         [HttpPost("Create")] // Defines an HTTP POST endpoint at "api/Students/Create".
+        [Authorize(Roles = "Admin")] // Restricts access to this endpoint to users with the "Admin" role, ensuring that only administrators can create new student records.
         [ProducesResponseType(StatusCodes.Status201Created)] // Indicates that this endpoint can return a 201 Created response.
         [ProducesResponseType(StatusCodes.Status400BadRequest)] // Indicates that this endpoint can return a 400 Bad Request response.
         public ActionResult<Student> Create(Student student)
@@ -84,6 +88,7 @@ namespace StudentApiServer.Controllers
         }
 
         [HttpPut("Update/{id}")] // Defines an HTTP PUT endpoint at "api/Students/Update/{id}".
+        [Authorize(Roles = "Admin")] // Restricts access to this endpoint to users with the "Admin" role, ensuring that only administrators can update student records.
         [ProducesResponseType(StatusCodes.Status200OK)] // Indicates that this endpoint can return a 200 OK response.
         [ProducesResponseType(StatusCodes.Status400BadRequest)] // Indicates that this endpoint can return a 400 Bad Request response.
         [ProducesResponseType(StatusCodes.Status404NotFound)] // Indicates that this endpoint can return a 404 Not Found response.
@@ -104,6 +109,7 @@ namespace StudentApiServer.Controllers
         }
 
         [HttpDelete("Delete/{id}")] // Defines an HTTP DELETE endpoint at "api/Students/Delete/{id}".
+        [Authorize(Roles = "Admin")] // Restricts access to this endpoint to users with the "Admin" role, ensuring that only administrators can delete student records.
         [ProducesResponseType(StatusCodes.Status200OK)] // Indicates that this endpoint can return a 200 OK response.
         [ProducesResponseType(StatusCodes.Status400BadRequest)] // Indicates that this endpoint can return a 400 Bad Request response.
         [ProducesResponseType(StatusCodes.Status404NotFound)] // Indicates that this endpoint can return a 404 Not Found response.
