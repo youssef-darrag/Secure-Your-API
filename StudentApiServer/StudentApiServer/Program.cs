@@ -35,7 +35,8 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true, // Validates the signing key to ensure the token is properly signed.
         ValidIssuer = "StudentApi", // Specifies the expected issuer of the token.
         ValidAudience = "StudentApiUsers", // Specifies the expected audience of the token.
-        IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes("THIS_IS_A_VERY_SECRET_KEY_123456")) // Specifies the symmetric security key used to validate the token's signature.
+        IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes("THIS_IS_A_VERY_SECRET_KEY_123456")), // Specifies the symmetric security key used to validate the token's signature.
+        ClockSkew = TimeSpan.Zero // Sets the clock skew to zero to prevent any leeway in token expiration validation.
     };
 });
 
