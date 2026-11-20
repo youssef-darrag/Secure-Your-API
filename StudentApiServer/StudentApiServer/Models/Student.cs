@@ -11,5 +11,10 @@
         public string Email { get; set; } = default!;
         public string PasswordHash { get; set; } = default!;
         public string Role { get; set; } = default!;
+
+        // Refresh token for JWT authentication
+        public string RefreshTokenHash { get; set; } = default!;
+        public DateTime? RefreshTokenExpiresAt { get; set; }
+        public DateTime? RefreshTokenRevokedAt { get; set; }
     }
 }
