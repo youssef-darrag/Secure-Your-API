@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using StudentApiServer.DataSimulation;
 using StudentApiServer.DTOs;
@@ -14,6 +15,7 @@ namespace StudentApiServer.Controllers
     public class AuthController : ControllerBase
     {
         [HttpPost("login")]
+        [EnableRateLimiting("AuthLimiter")] // Applies the "AuthLimiter" policy to this endpoint, limiting the number of login attempts per IP address.
         public IActionResult Login([FromBody] LoginRequest request)
         {
             // Step 1: Find the student by email from the in-memory data store.
@@ -84,6 +86,7 @@ namespace StudentApiServer.Controllers
         }
 
         [HttpPost("refresh")]
+        [EnableRateLimiting("AuthLimiter")] // Applies the "AuthLimiter" policy to this endpoint, limiting the number of refresh attempts per IP address.
         public IActionResult Refresh([FromBody] RefreshRequest request)
         {
             var student = StudentDataSimulation.Students.FirstOrDefault(s => s.Email == request.Email);

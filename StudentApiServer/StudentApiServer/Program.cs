@@ -3,12 +3,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using StudentApiServer.Authorization;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
-builder.Services.AddControllers();
 
 builder.Services.AddCors(options =>
 {
@@ -17,6 +16,24 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("https://localhost:7036", "http://localhost:5003")
         .AllowAnyHeader()
         .AllowAnyMethod(); // Configures CORS to allow requests from specified origins with any header and method.
+    });
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("AuthLimiter", httpContext =>
+    {
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+        return RateLimitPartition.GetFixedWindowLimiter(partitionKey: ip,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            });
     });
 });
 
@@ -47,6 +64,8 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("StudentOwnerOrAdmin", policy =>
         policy.Requirements.Add(new StudentOwnerOrAdminRequirement())); // Adds the custom authorization requirement to the policy.
 });
+
+builder.Services.AddControllers();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -105,6 +124,18 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseCors("StudentApiCorsPolicy"); // Applies the defined CORS policy to the application.
+
+app.UseRateLimiter(); // Enables rate limiting middleware to enforce request limits based on the defined policies.
+
+app.Use(async (context, next) =>
+{
+    await next();
+
+    if (context.Response.StatusCode == StatusCodes.Status429TooManyRequests)
+    {
+        await context.Response.WriteAsync("Too many login attempts. Please try again later.");
+    }
+});
 
 app.UseAuthentication(); // Enables authentication middleware to validate JWT tokens in incoming requests.
 
