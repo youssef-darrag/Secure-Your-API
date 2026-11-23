@@ -11,6 +11,13 @@ namespace StudentApiServer.Controllers
     [ApiController] // Marks the class as a Web API controller with enhanced features.
     public class StudentsController : ControllerBase
     {
+        private readonly ILogger<StudentsController> _logger;
+
+        public StudentsController(ILogger<StudentsController> logger)
+        {
+            _logger = logger;
+        }
+
         [HttpGet("GetAll")] // Defines an HTTP GET endpoint at "api/Students/GetAll".
         [Authorize(Roles = "Admin")] // Restricts access to this endpoint to users with the "Admin" role, ensuring that only administrators can retrieve all student data.
         [ProducesResponseType(StatusCodes.Status200OK)] // Indicates that this endpoint can return a 200 OK response.
@@ -121,14 +128,43 @@ namespace StudentApiServer.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)] // Indicates that this endpoint can return a 404 Not Found response.
         public ActionResult Delete(int id)
         {
+            // ✅ Capture IP once for tracing
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+            // ✅ Identify the admin who is performing the action ClaimTypes.NameIdentifier is what you put in JWT during login.
+            var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown";
+
             if (id < 1)
+            {
+                // ✅ Audit attempt (invalid input) - still useful signal
+                _logger.LogWarning("Admin action blocked (invalid id). AdminId={AdminId}, Action=DeleteStudent, TargetId={TargetId}, IP={IP}", adminId, id, ip);
+
                 return BadRequest("Invalid student ID."); // Returns a 400 Bad Request response if the provided ID is invalid.
+            }
 
             var student = StudentDataSimulation.Students.FirstOrDefault(s => s.Id == id); // Finds a student by their ID.
             if (student == null)
+            {
+                // ✅ Audit: admin attempted to delete a non-existing student
+                _logger.LogWarning("Admin action failed (target not found). AdminId={AdminId}, Action=DeleteStudent, TargetId={TargetId}, IP={IP}", adminId, id, ip);
+
                 return NotFound($"Student with ID {id} not found."); // Returns a 404 Not Found response if the student is not found.
+            }
+
+            // ===============================
+            // Audit BEFORE deleting (recommended)
+            // ===============================
+            // ✅ Why before?
+            // If delete throws or fails later, you still have the audit record of the attempt.
+            _logger.LogInformation("Admin action started. AdminId={AdminId}, Action=DeleteStudent, TargetId={TargetId}, TargetEmail={TargetEmail}, IP={IP}", adminId, student.Id, student.Email, ip);
 
             StudentDataSimulation.Students.Remove(student); // Removes the student from the list.
+
+            // ===============================
+            // Audit AFTER deleting (optional, confirms success)
+            // ===============================
+            _logger.LogInformation("Admin action succeeded. AdminId={AdminId}, Action=DeleteStudent, TargetId={TargetId}, IP={IP}", adminId, id, ip);
+
             return Ok($"Student with ID {id} has been deleted."); // Returns a 200 OK response confirming the deletion of the student.
         }
     }
