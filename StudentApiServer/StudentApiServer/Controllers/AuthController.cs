@@ -15,10 +15,12 @@ namespace StudentApiServer.Controllers
     public class AuthController : ControllerBase
     {
         private readonly ILogger<AuthController> _logger;
+        private readonly IConfiguration _configuration;
 
-        public AuthController(ILogger<AuthController> logger)
+        public AuthController(ILogger<AuthController> logger, IConfiguration configuration)
         {
             _logger = logger;
+            _configuration = configuration;
         }
 
         [HttpPost("login")]
@@ -80,7 +82,13 @@ namespace StudentApiServer.Controllers
 
             // Step 4: Create the symmetric security key used to sign the JWT.
             // This key must match the key used in JWT validation middleware.
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("THIS_IS_A_VERY_SECRET_KEY_123456"));
+            var secretKey = _configuration["JWT_SECRET_KEY"];
+            if (string.IsNullOrWhiteSpace(secretKey))
+            {
+                throw new Exception("JWT secret key is not configured.");
+            }
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
 
 
             // Step 5: Define the signing credentials.
@@ -188,7 +196,13 @@ namespace StudentApiServer.Controllers
                 new Claim(ClaimTypes.Role, student.Role)
             };
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("THIS_IS_A_VERY_SECRET_KEY_123456"));
+            var secretKey = _configuration["JWT_SECRET_KEY"];
+            if (string.IsNullOrWhiteSpace(secretKey))
+            {
+                throw new Exception("JWT secret key is not configured.");
+            }
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
 
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
